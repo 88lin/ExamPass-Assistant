@@ -1,0 +1,9 @@
+python-pptx
+python-docx
+pdfplumber
+pymupdf
+pytest
+pytest-mock
+Pillow
+markdown
+reportlab

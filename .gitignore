@@ -1,0 +1,12 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pdf
+*.pptx
+*.docx
+*.doc
+*.html
+_extracted.txt
+_*.txt
+_*.py
