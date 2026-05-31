@@ -8,18 +8,18 @@
 
 ### What is this
 
-An AI-powered exam prep assistant. Drop in your lecture PPTs, Word handouts, or PDF readings — it generates:
+An AI-powered exam prep assistant. Drop in lecture PPTs, Word handouts, or PDF readings — it generates:
 
-- **Knowledge Guides** — structured review notes with perfect formula rendering, priority labels, and table-of-contents navigation
-- **Interactive Quizzes** — answer online, one-click grading, per-question explanations with common mistake warnings
+- **Knowledge Guides** — structured review notes with MathJax formulas, dual-color highlighting (key points in bold black, explanations in lighter gray), priority tags (must-know / key / frequent / info), and auto-generated table of contents
+- **Interactive Quizzes** — 28 questions, 100 points. Click to answer, one-click grading, per-question correct/incorrect badges, detailed explanations, and common mistake warnings
 
-Open in any browser. No PDF engine needed. Formulas rendered by MathJax. Ctrl+P to print.
+Open in any browser. Ctrl+P to print as PDF. MathJax renders formulas perfectly.
 
 ### Why
 
-The universal pain of finals week: scattered lecture files, no idea what's actually on the exam, no reliable practice questions.
+The universal pain of finals week: scattered lecture files, no clear sense of exam priorities, no reliable practice questions.
 
-ExamPass reads your course materials with Claude → extracts key points → generates quizzes → grades them. Students use it to study smarter. Instructors use it to create exercises and assignments in seconds.
+ExamPass reads your course materials with Claude, extracts key concepts with logical narratives, and generates self-grading quizzes. Students use it to study smarter. Instructors use it to create exercises and assignments in seconds.
 
 ### Supported Formats
 
@@ -35,26 +35,18 @@ pip install -r requirements.txt
 
 ### Usage
 
-**Generate chapter study materials** — run `/exampass` in any course directory. The skill scans subfolders, groups files by chapter, extracts all content, and outputs knowledge guides + interactive quizzes into each folder.
-
-**Generate a final exam** — run `/exampass-final` in the course root. Configure difficulty, duration, and question distribution. The skill reads all chapter content and produces a comprehensive exam with answer key.
+**Generate chapter materials** — run `/exampass` in any course directory. The skill scans subfolders, groups files by chapter, extracts all content, performs deep analysis, and outputs knowledge guides + interactive quizzes into each folder.
 
 **Use in your own code**:
 
 ```python
 from scripts.template_engine import save_knowledge_html, save_test
 
-# Knowledge guide — pass HTML body directly, no Markdown/Pandoc needed
-body_html = '''
-<h2>1. Sequence Modeling Basics</h2>
-<h3>1.1 Sequence Data</h3>
-<p>Sequence data is characterized by <strong>ordered elements</strong>...</p>
-<table><tr><th>N</th><th>Name</th></tr>...</table>
-<blockquote>Key point: Beam search is a heuristic method</blockquote>
-'''
-save_knowledge_html(body_html, 'output.html', 'Chapter 15')
+# Knowledge guide — pass HTML body directly (engine adds H1 + TOC)
+body = '<h2>1. Sequence Modeling Basics</h2>\n<h3>1.1 What is Sequence Data</h3>\n<p>...</p>'
+save_knowledge_html(body, 'knowledge.html', 'Chapter 15')
 
-# Interactive quiz — pass question data, get a clickable self-grading page
+# Interactive quiz — pass question data, get a self-grading page
 questions = [
     {"type": "choice", "points": 2,
      "question": "What is the core function of a language model?",
@@ -64,15 +56,15 @@ questions = [
      "explanation": "A language model computes P(w1,...,wT)...",
      "pitfall": "Don't confuse language models with translation systems."},
 ]
-save_test(questions, 'quiz.html', 'Chapter Quiz', '100 points total')
+save_test(questions, 'quiz.html', 'Chapter 15', '100 points', duration_minutes=30)
 ```
 
 ### How It Works
 
-1. **Scan & Group** — recursively finds all PPTX/DOCX/PDF files, groups by parent folder (one chapter per folder)
+1. **Scan & Group** — recursively finds all PPTX/DOCX/PDF files, groups by parent folder
 2. **Extract** — pulls text, tables, and embedded images from each file
-3. **Analyze** — Claude reads the content, identifies key concepts, formulas, solution methods, and exam-relevant patterns
-4. **Generate** — Claude outputs HTML body directly (no Markdown/Pandoc needed); templates wrap it into a styled page with MathJax and interactive quiz logic
+3. **Analyze** — Claude deeply reads the content, identifies concepts, motivations, and logical connections
+4. **Generate** — produces styled HTML with dual-color highlighting, MathJax formulas, and interactive quiz logic
 
 ### Project Structure
 
@@ -87,15 +79,20 @@ EPA/
 │   ├── extract_docx.py         # DOCX extraction
 │   ├── extract_pdf.py          # PDF extraction
 │   ├── image_extractor.py      # Image extraction for multimodal analysis
-│   ├── template_engine.py      # HTML template engine (knowledge + quiz)
+│   ├── template_engine.py      # HTML template engine
+│   ├── html_generator.py       # Fast generator
+│   ├── generate_cached.py      # Cache-based instant re-runs
+│   ├── run_exampass.py         # Single-script extraction entry
 │   ├── knowledge_analyzer.py   # Knowledge list prompt builder
 │   ├── test_generator.py       # Quiz generation prompt builder
 │   ├── exam_generator.py       # Final exam prompt builder
-│   ├── web_research.py         # Web search utilities
 │   └── utils.py
-├── templates/                  # CSS stylesheets
-│   ├── base.css                # Shared styles (warm paper background)
-│   └── test.css                # Interactive quiz styles
+├── templates/                  # CSS & HTML templates
+│   ├── base.css                # Shared styles (warm paper, dual-color)
+│   ├── test.css                # Interactive quiz styles
+│   ├── page_template.html      # HTML page shell
+│   ├── test_js_template.js     # Quiz JS template
+│   └── test_labels.json        # Chinese UI labels
 ├── tests/                      # 102 test cases
 └── requirements.txt
 ```
