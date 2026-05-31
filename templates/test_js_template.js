@@ -1,10 +1,9 @@
 var Q = __QUESTIONS_PLACEHOLDER__;
 var LABELS = __LABELS_PLACEHOLDER__;
 
-console.log('ExamPass: loaded', Q.length, 'questions');
-
-(function build(){
-  console.log('ExamPass: build() starting...');
+function build(){
+  var container = document.getElementById('questions-container');
+  if (!container) { console.error('ExamPass: questions-container not found'); return; }
   var h = '';
   var sec = '';
   var titles = LABELS.section;
@@ -48,9 +47,14 @@ console.log('ExamPass: loaded', Q.length, 'questions');
     h += '</div></div>';
   }
 
-  document.getElementById('questions-container').innerHTML = h;
-  console.log('ExamPass: build() done, HTML length:', h.length);
-})();
+  container.innerHTML = h;
+}
+
+document.addEventListener('DOMContentLoaded', build);
+// Fallback: if DOM already loaded, run immediately
+if (document.readyState === 'interactive' || document.readyState === 'complete') {
+  build();
+}
 
 function sel(qid, idx) {
   var prefix = 'opt-' + qid + '-';

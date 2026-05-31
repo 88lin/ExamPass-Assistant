@@ -1,6 +1,11 @@
 """Template engine for ExamPass HTML generation.
 
-Zero Unicode-in-source: all CJK text lives in JSON/CSS/JS files.
+Architecture:
+  templates/page_template.html  -- HTML shell (__TITLE__, __CSS__, __BODY__, __EXTRA_JS__)
+  templates/base.css            -- shared styles
+  templates/test.css            -- quiz-specific styles
+  templates/test_js_template.js -- JS for interactive quiz (__QUESTIONS_PLACEHOLDER__, __LABELS_PLACEHOLDER__)
+  templates/test_labels.json    -- Chinese UI labels
 """
 
 import os
@@ -17,58 +22,40 @@ def _read(filename):
     return ''
 
 
-# MathJax 3 config: enable $...$ and $$...$$ delimiters
-_MATHJAX_CONFIG = """<script>
+_PAGE_TEMPLATE = _read('page_template.html')
+
+_MATHJAX_CONFIG = '''<script>
 MathJax = {
   tex: {
     inlineMath: [['$', '$'], ['\\(', '\\)']],
     displayMath: [['$$', '$$'], ['\\[', '\\]']]
   }
 };
-</script>"""
-_MATHJAX_SCRIPT = '<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"></script>'
+</script>'''
+
+_MATHJAX_SCRIPT = (
+    '<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js"></script>'
+)
 
 
-def _page_shell(title, body_html, extra_css='', extra_js=''):
-    css = _read('base.css') + '\n' + extra_css
-    parts = [
-        '<!DOCTYPE html>',
-        '<html lang="zh-CN">',
-        '<head>',
-        '<meta charset="utf-8"/>',
-        '<meta name="viewport" content="width=device-width, initial-scale=1.0"/>',
-        '<title>' + title + '</title>',
-        _MATHJAX_CONFIG,
-        _MATHJAX_SCRIPT,
-        '<style>',
-        css,
-        '</style>',
-        extra_js,
-        '</head>',
-        '<body>',
-        '',
-        '<header id="exampass-header">',
-        '  <div class="header-left"><span class="header-brand">ExamPass Assistant</span></div>',
-        '  <div class="header-right"><span class="header-url">exampass.ai</span></div>',
-        '</header>',
-        '<hr class="header-divider">',
-        '',
-        body_html,
-        '',
-        '</body>',
-        '</html>',
-    ]
-    return '\n'.join(parts)
+def _build_page(title, body_html, css_extra='', js_extra=''):
+    """Fill the page template. JS goes AFTER body -- critical for DOM access."""
+    css = _read('base.css') + '\n' + css_extra
+    return (
+        _PAGE_TEMPLATE
+        .replace('__TITLE__', title)
+        .replace('__MATHJAX_CONFIG__', _MATHJAX_CONFIG)
+        .replace('__MATHJAX_SCRIPT__', _MATHJAX_SCRIPT)
+        .replace('__CSS__', css)
+        .replace('__BODY__', body_html)
+        .replace('__EXTRA_JS__', js_extra)
+    )
 
 
 # ─── Knowledge page ─────────────────────────────────────────────────
 
-def render_knowledge_html(body_html, title):
-    return _page_shell(title, body_html)
-
-
 def save_knowledge_html(body_html, output_path, title):
-    html = render_knowledge_html(body_html, title)
+    html = _build_page(title, body_html)
     out_dir = os.path.dirname(output_path)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
@@ -78,19 +65,12 @@ def save_knowledge_html(body_html, output_path, title):
 
 # ─── Interactive test page ──────────────────────────────────────────
 
-def render_test(questions, title, subtitle='', duration_minutes=30):
+def save_test(questions, output_path, title, subtitle='', duration_minutes=30):
     """Generate an interactive test page.
 
-    questions: list of dicts with keys:
-      type: "choice" | "tf" | "short" | "essay"
-      points: int
-      question: str (HTML allowed)
-      options: list of str (for choice only)
-      answer: int (0-index for choice/tf, -1 for open-ended)
-      explanation: str (HTML allowed)
-      pitfall: str (optional)
-
-    duration_minutes: int, defaults to 30
+    questions: list of {type, points, question, options, answer, explanation, pitfall}
+    subtitle: optional custom subtitle (overrides auto-generated duration subtitle)
+    duration_minutes: used in auto-generated subtitle if subtitle is empty
     """
     questions_json = json.dumps(questions, ensure_ascii=False)
     labels = json.loads(_read('test_labels.json'))
@@ -102,14 +82,12 @@ def render_test(questions, title, subtitle='', duration_minutes=30):
     js = '<script>\n' + js + '\n</script>'
 
     # Subtitle
-    sub_html = ''
     if subtitle:
         sub_html = '<p style="text-align:center;color:var(--ink-light);font-size:0.95em">' + subtitle + '</p>'
-    elif duration_minutes:
+    else:
         sub_html = '<p style="text-align:center;color:var(--ink-light);font-size:0.95em">' + labels['duration_prefix'] + str(duration_minutes) + labels['duration_suffix'] + '</p>'
 
-    # Body
-    body_parts = [
+    body = '\n'.join([
         '<h1>' + title + '</h1>',
         '<h2 style="text-align:center">' + labels['page_title'] + '</h2>',
         sub_html,
@@ -117,14 +95,9 @@ def render_test(questions, title, subtitle='', duration_minutes=30):
         '<div id="score-box"><div class="score-num" id="score-num">0</div><div class="score-label">' + labels['score_label'] + '</div></div>',
         '<div id="questions-container"></div>',
         '<div class="grading-bar no-print"><button onclick="gradeAll()" id="grade-btn">' + labels['grade_button'] + '</button></div>',
-    ]
-    body = '\n'.join(body_parts)
+    ])
 
-    return _page_shell(title, body, extra_css=_read('test.css'), extra_js=js)
-
-
-def save_test(questions, output_path, title, subtitle='', duration_minutes=30):
-    html = render_test(questions, title, subtitle, duration_minutes)
+    html = _build_page(title, body, css_extra=_read('test.css'), js_extra=js)
     out_dir = os.path.dirname(output_path)
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
