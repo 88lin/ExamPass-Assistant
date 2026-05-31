@@ -54,7 +54,42 @@ def _build_page(title, body_html, css_extra='', js_extra=''):
 
 # ─── Knowledge page ─────────────────────────────────────────────────
 
+import re as _re
+
+def _auto_toc_and_title(body_html, title):
+    """Auto-inject H1 title + TOC block, and add anchor IDs to H2/H3 headings."""
+    h1_html = '<h1>' + title + '</h1>\n'
+
+    # Parse H2 and H3 headings, assign IDs
+    toc_items = []
+
+    def replace_heading(match):
+        level = int(match.group(1))
+        text = match.group(2).strip()
+        # Remove HTML tags from text for clean TOC entry
+        clean = _re.sub(r'<[^>]+>', '', text)
+        # Generate anchor from a hash of the text (stable and safe)
+        anchor = 's' + str(abs(hash(clean)))[:8]
+        toc_items.append({'level': level, 'text': clean, 'anchor': anchor})
+        return '<h' + str(level) + ' id="' + anchor + '">' + text + '</h' + str(level) + '>'
+
+    body_html = _re.sub(r'<h([23])[^>]*?>(.+?)</h\1>', replace_heading, body_html, flags=_re.DOTALL)
+
+    # Build TOC
+    if toc_items:
+        toc_html = '<div class="toc">\n<h2>目录</h2>\n<ul>\n'
+        for item in toc_items:
+            indent = '  ' if item['level'] == 3 else ''
+            toc_html += indent + '<li><a href="#' + item['anchor'] + '">' + item['text'] + '</a></li>\n'
+        toc_html += '</ul>\n</div>\n'
+    else:
+        toc_html = ''
+
+    return h1_html + toc_html + body_html
+
+
 def save_knowledge_html(body_html, output_path, title):
+    body_html = _auto_toc_and_title(body_html, title)
     html = _build_page(title, body_html)
     out_dir = os.path.dirname(output_path)
     if out_dir:
