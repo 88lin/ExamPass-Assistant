@@ -102,6 +102,13 @@ EPA/
 └── requirements.txt
 ```
 
+### 贡献者
+
+- 开发与维护：[@WUBING2023](https://github.com/WUBING2023)
+- 测试 / QA：[@YeMoonlight](https://github.com/YeMoonlight)
+- 测试 / QA：[@Yuzhihan-zyr](https://github.com/Yuzhihan-zyr)
+- 启发性贡献：yaxing@cvc.uab.es
+
 ### 许可证
 
 本软件采用 **Creative Commons BY-NC 4.0** 许可证。

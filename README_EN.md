@@ -97,6 +97,13 @@ EPA/
 └── requirements.txt
 ```
 
+### Contributors
+
+- Development & Maintenance: [@WUBING2023](https://github.com/WUBING2023)
+- Testing / QA: [@YeMoonlight](https://github.com/YeMoonlight)
+- Testing / QA: [@Yuzhihan-zyr](https://github.com/Yuzhihan-zyr)
+- Inspirational Contribution: yaxing@cvc.uab.es
+
 ### License
 
 [CC BY-NC 4.0](./LICENSE) — free to use, modify, and share for non-commercial purposes. Commercial use requires a separate license.
