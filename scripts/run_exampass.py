@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from scanner import scan_and_group, get_group_name
 from extractor import extract_file, merge_group_content
 from image_extractor import extract_from_pptx
+from ocr_backend import ocr_images, is_multimodal_hint
 
 
 def main(target_dir):
@@ -43,12 +44,15 @@ def main(target_dir):
         results = []
         all_images = []
 
+        img_dir = os.path.join(folder, '_images')
+        os.makedirs(img_dir, exist_ok=True)
+
         for fpath in files:
             fname = os.path.basename(fpath)
             ext = os.path.splitext(fpath)[1].lower()
             print("  Extracting:", fname, "(" + ext + ")")
 
-            result = extract_file(fpath)
+            result = extract_file(fpath, image_output_dir=img_dir)
             results.append(result)
             all_images.extend(result.get('images', []))
 
@@ -60,12 +64,25 @@ def main(target_dir):
 
         merged = merge_group_content(results)
 
+        # Non-multimodal models can't see images -> OCR them into text so
+        # chart/formula/diagram content isn't lost.
+        ocr_text = ''
+        if all_images and not is_multimodal_hint():
+            print("  Model is text-only; running OCR on", len(all_images), "image(s)...")
+            ocr_text = ocr_images(all_images)
+            if ocr_text:
+                merged += "\n\n## 图片 OCR 文本\n" + ocr_text
+                print("    OCR text:", len(ocr_text), "chars merged into bundle")
+
         # Save extraction bundle for Claude analysis
         bundle = {
             'group_name': group_name,
             'folder': folder,
             'merged_text': merged,
             'file_count': len(files),
+            'image_count': len(all_images),
+            'images': all_images,
+            'ocr_used': bool(ocr_text),
             'individual_results': [
                 {'filename': os.path.basename(f), 'text_length': len(r['text_summary'])}
                 for f, r in zip(files, results)
