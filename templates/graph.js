@@ -583,3 +583,125 @@ function formatTime(iso) {
       ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   } catch(e) { return ''; }
 }
+
+// ─── Search ────────────────────────────────────────────────
+
+var searchTimer = null;
+document.addEventListener('DOMContentLoaded', function() {
+  var searchInput = document.getElementById('search-input');
+  if (!searchInput) return;
+  searchInput.addEventListener('input', function() {
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(doSearch, 200);
+  });
+  searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { searchInput.value = ''; doSearch(); }
+  });
+});
+
+function doSearch() {
+  var query = document.getElementById('search-input').value.trim().toLowerCase();
+  var allNodes = document.querySelectorAll('.gn');
+  var firstHit = null;
+
+  allNodes.forEach(function(el) {
+    el.classList.remove('search-hit', 'search-dim');
+  });
+
+  if (!query) return;
+
+  allNodes.forEach(function(el) {
+    var label = (el.querySelector('.gn-label') || {}).textContent || '';
+    if (label.toLowerCase().indexOf(query) !== -1) {
+      el.classList.add('search-hit');
+      if (!firstHit) firstHit = el;
+    } else {
+      el.classList.add('search-dim');
+    }
+  });
+
+  if (firstHit) {
+    firstHit.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+// ─── Zoom ──────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', function() {
+  var slider = zoomSlider;
+  var label = zoomLabel;
+  var outBtn = document.getElementById('zoom-out');
+  var inBtn = document.getElementById('zoom-in');
+  var resetBtn = document.getElementById('reset-btn');
+
+  if (!slider) return;
+
+  var zoom = settings.zoom || 1;
+
+  function applyZoom(z) {
+    zoom = Math.max(0.5, Math.min(2, z));
+    var canvas = graphCanvas;
+    if (canvas) canvas.style.transform = 'scale(' + zoom + ')';
+    slider.value = Math.round(zoom * 100);
+    label.textContent = Math.round(zoom * 100) + '%';
+    settings.zoom = zoom;
+    saveSettings(settings);
+    // Redraw connections after zoom
+    setTimeout(drawConnections, 100);
+  }
+
+  slider.addEventListener('input', function() { applyZoom(this.value / 100); });
+  outBtn.addEventListener('click', function() { applyZoom(zoom - 0.1); });
+  inBtn.addEventListener('click', function() { applyZoom(zoom + 0.1); });
+
+  resetBtn.addEventListener('click', function() {
+    settings.collapsed = [];
+    settings.renamed = {};
+    saveSettings(settings);
+    activeEditNode = null;
+    document.getElementById('search-input').value = '';
+    doSearch();
+    applyZoom(1);
+    render(treeData);
+  });
+});
+
+// ─── Init ──────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', function() {
+  cacheDomRefs();
+
+  if (typeof TREE_DATA === 'undefined') {
+    graphCanvas.innerHTML =
+      '<div style="padding:60px;text-align:center;color:#999;">未找到知识图谱数据</div>';
+    return;
+  }
+  render(TREE_DATA);
+
+  // Handle window resize — redraw connections
+  var resizeTimer = null;
+  window.addEventListener('resize', function() {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      if (activeEditNode) {
+        var panel = document.querySelector('.ge[data-for-node="' + activeEditNode.id + '"]');
+        if (panel && panel._scrollHandler) {
+          window.removeEventListener('scroll', panel._scrollHandler);
+        }
+        activeEditNode = null;
+      }
+      drawConnections();
+    }, 300);
+  });
+
+  // Close edit panel on click outside
+  document.addEventListener('click', function(e) {
+    if (activeEditNode) {
+      var clickedOnNode = e.target.closest('.gn[data-id="' + activeEditNode.id + '"]');
+      var clickedOnPanel = e.target.closest('.ge[data-for-node="' + activeEditNode.id + '"]');
+      if (!clickedOnNode && !clickedOnPanel) {
+        closeEditPanel(activeEditNode);
+      }
+    }
+  });
+});
