@@ -1,8 +1,6 @@
 """Tests for knowledge_graph module."""
 import json
 import os
-import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 
 import pytest
 from knowledge_graph import build_graph_prompt, parse_graph_response, validate_tree_json
@@ -48,6 +46,17 @@ def test_parse_graph_response_no_code_block():
     response = '{"title": "test", "nodes": []}'
     result = parse_graph_response(response)
     assert result["title"] == "test"
+
+
+def test_parse_graph_response_invalid_json():
+    with pytest.raises(ValueError, match="JSON 解析失败"):
+        parse_graph_response("this is not json at all")
+
+
+def test_parse_graph_response_code_block_no_lang_tag():
+    response = '```\n{"title": "t", "nodes": []}\n```'
+    result = parse_graph_response(response)
+    assert result["title"] == "t"
 
 
 def test_validate_tree_json_valid():

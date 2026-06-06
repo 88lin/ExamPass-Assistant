@@ -49,6 +49,15 @@ class TestBuildExamPrompt:
         assert "40" in prompt
         assert "30" in prompt
 
+    def test_choice_quality_and_answer_distribution(self):
+        prompt = build_exam_prompt(
+            "test", "中等", 90, {"选择题": 100}
+        )
+        assert "选择题质量要求" in prompt
+        assert "概念混淆" in prompt
+        assert "正确答案在 A/B/C/D 间随机" in prompt
+        assert "次数差不超过 1" in prompt
+
 
 class TestSplitExamAndAnswer:
     def test_standard_split(self):

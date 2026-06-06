@@ -7,7 +7,6 @@ the response.
 
 import json
 import re
-import uuid
 
 
 def build_graph_prompt(text_summary: str) -> str:
@@ -64,6 +63,8 @@ def parse_graph_response(response: str) -> dict:
         json_str = m.group(1)
     else:
         # Try to find raw JSON object
+        # NOTE: greedy regex — assumes single JSON object in response.
+        # Prompt instructs strict JSON output so multi-object responses are unlikely.
         m = re.search(r'\{[\s\S]*"title"[\s\S]*"nodes"[\s\S]*\}', response)
         if m:
             json_str = m.group(0)

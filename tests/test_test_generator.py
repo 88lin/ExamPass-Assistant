@@ -20,6 +20,13 @@ class TestBuildTestPrompt:
         prompt = build_test_prompt("content", question_count=10)
         assert "10 道" in prompt
 
+    def test_choice_options_are_complex_and_randomized(self):
+        prompt = build_test_prompt("content")
+        assert "条件遗漏" in prompt
+        assert "因果倒置" in prompt
+        assert "正确答案位置必须在 A/B/C/D 间随机" in prompt
+        assert "各字母出现次数差不超过 1" in prompt
+
     def test_with_knowledge(self):
         prompt = build_test_prompt("text", knowledge_markdown="# Knowledge\n要点")
         assert "知识清单" in prompt or "Knowledge" in prompt

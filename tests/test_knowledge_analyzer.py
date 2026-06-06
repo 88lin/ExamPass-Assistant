@@ -11,6 +11,16 @@ class TestBuildKnowledgePrompt:
         assert "课程辅导专家" in prompt or "复习" in prompt
         assert text in prompt
 
+    def test_default_mode_is_deep_learning(self):
+        prompt = build_knowledge_prompt("content")
+        assert "深度学习（默认主模式）" in prompt
+        assert "读者读一遍就能理解" in prompt
+        assert "一步一步推导或拆流程" in prompt
+
+    def test_exam_mode_can_be_requested(self):
+        prompt = build_knowledge_prompt("content", mode="考试")
+        assert "当前模式：考试" in prompt
+
     def test_with_images(self):
         text = "Test content"
         images = ["/tmp/img1.png", "/tmp/img2.png"]
