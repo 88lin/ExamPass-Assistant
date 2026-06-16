@@ -574,10 +574,82 @@ function initZoom() {
 
 // ─── Init ──────────────────────────────────────────────────
 
+// ─── Resize handle ────────────────────────────────────────
+
+function initResizeHandle() {
+  var handle = document.getElementById('resize-handle');
+  if (!handle) return;
+
+  var isDragging = false;
+  var startX = 0;
+  var startWidth = 0;
+
+  function onMouseDown(e) {
+    e.preventDefault();
+    isDragging = true;
+    startX = e.clientX;
+    startWidth = treePanel.offsetWidth;
+    handle.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }
+
+  function onMouseMove(e) {
+    if (!isDragging) return;
+    var dx = e.clientX - startX;
+    var newWidth = Math.max(240, Math.min(window.innerWidth * 0.7, startWidth + dx));
+    treePanel.style.flex = 'none';
+    treePanel.style.width = newWidth + 'px';
+    treePanel.style.minWidth = '0';
+    settings.treeRatio = newWidth / (treePanel.parentElement.offsetWidth - 6);
+  }
+
+  function onMouseUp() {
+    if (!isDragging) return;
+    isDragging = false;
+    handle.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    saveSettings(settings);
+    if (treeData) { measureNodes(); layoutTree(treeData.nodes); applyPositions(); drawConnections(); }
+  }
+
+  handle.addEventListener('mousedown', onMouseDown);
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+
+  handle.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    isDragging = true;
+    startX = e.touches[0].clientX;
+    startWidth = treePanel.offsetWidth;
+    handle.classList.add('dragging');
+  }, {passive: false});
+  document.addEventListener('touchmove', function(e) {
+    if (!isDragging) return;
+    var dx = e.touches[0].clientX - startX;
+    var newWidth = Math.max(240, Math.min(window.innerWidth * 0.7, startWidth + dx));
+    treePanel.style.flex = 'none';
+    treePanel.style.width = newWidth + 'px';
+    treePanel.style.minWidth = '0';
+  }, {passive: false});
+  document.addEventListener('touchend', onMouseUp);
+}
+
+function applyStoredRatio() {
+  if (settings.treeRatio && window.innerWidth > 860) {
+    treePanel.style.flex = 'none';
+    var total = treePanel.parentElement.offsetWidth - 6;
+    treePanel.style.width = Math.round(total * settings.treeRatio) + 'px';
+    treePanel.style.minWidth = '0';
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   cacheDomRefs();
   initToolbar();
   initZoom();
+  initResizeHandle();
 
   // Notes auto-save
   npBody.addEventListener('blur', function() { saveCurrentNotes(); });
@@ -601,10 +673,21 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
   render(TREE_DATA);
+  applyStoredRatio();
 
   var resizeTimer = null;
   window.addEventListener('resize', function() {
     if (resizeTimer) clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(drawConnections, 300);
+    resizeTimer = setTimeout(function() {
+      drawConnections();
+      if (window.innerWidth <= 860) {
+        treePanel.style.flex = '';
+        treePanel.style.width = '';
+        treePanel.style.minWidth = '';
+      } else {
+        applyStoredRatio();
+      }
+      if (treeData) { measureNodes(); layoutTree(treeData.nodes); applyPositions(); drawConnections(); }
+    }, 300);
   });
 });

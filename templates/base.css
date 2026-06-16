@@ -82,3 +82,34 @@ div.toc li { margin: 3px 0; font-size: 0.95em; }
 .tag-key    { background: #fef3c7; color: #92400e; padding: 1px 6px; border-radius: 3px; font-size: 0.82em; font-weight: 600; }
 .tag-freq   { background: #dbeafe; color: #1e40af; padding: 1px 6px; border-radius: 3px; font-size: 0.82em; font-weight: 600; }
 .tag-info   { background: #f0fdf4; color: #166534; padding: 1px 6px; border-radius: 3px; font-size: 0.82em; font-weight: 600; }
+
+/* ── Checkpoint self-test ── */
+.checkpoint {
+  background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius);
+  padding: 10px 16px; margin: 18px 0;
+  font-size: 0.95em;
+}
+.checkpoint::before {
+  content: '🧠 自测：';
+  font-weight: 700; color: #1e40af;
+}
+
+/* ── TL;DR summary ── */
+.tldr {
+  background: #fefce8; border-left: 3px solid #eab308;
+  padding: 8px 14px; margin: 10px 0;
+  font-weight: 600; font-size: 0.95em;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  body { max-width: 100%; padding: 12px 10px 40px; font-size: 11pt; }
+  h1 { font-size: 1.3em; }
+  h2 { font-size: 1.12em; }
+  table { font-size: 0.85em; }
+  td, th { padding: 4px 6px; }
+  pre { font-size: 0.85em; padding: 6px; }
+}
+@media (max-width: 400px) {
+  body { padding: 8px 6px 32px; font-size: 10.5pt; }
+}

@@ -3,9 +3,15 @@
 Generates the prompt that asks Claude to structure extracted course
 content into a hierarchical knowledge tree, then parses and validates
 the response.
+
+Also provides skeleton_to_graph_tree() for converting the multi-agent
+knowledge skeleton into the graph renderer's tree format, and
+build_fallback_tree() for generating a tree directly from an extraction
+bundle when no skeleton exists (Codex/non-agent fallback).
 """
 
 import json
+import os
 import re
 
 
@@ -221,5 +227,106 @@ def skeleton_to_graph_tree(skeleton: dict) -> dict:
         })
 
     tree = {"title": skeleton.get("title", "课程"), "nodes": nodes}
+    validate_tree_json(tree)
+    return tree
+
+
+def build_fallback_tree(extraction_bundle_path: str, title: str = "课程") -> dict:
+    """Generate a knowledge graph tree directly from an extraction bundle.
+
+    This is the fallback used when no knowledge_skeleton.json exists — for
+    example when the skeleton agent fails on non-Claude platforms (Codex,
+    OpenClaw) or when running in single-agent mode.
+
+    It reads the merged_text from the bundle, splits by PDF/section,
+    and builds a simple 2-level tree: chapter → extracted concepts.
+    """
+    if not os.path.exists(extraction_bundle_path):
+        raise FileNotFoundError(f"提取文件不存在: {extraction_bundle_path}")
+
+    with open(extraction_bundle_path, 'r', encoding='utf-8') as f:
+        bundle = json.load(f)
+
+    merged = bundle.get('merged_text', '')
+    if not merged:
+        raise ValueError("提取文件中没有 merged_text 内容")
+
+    # Split by PDF boundaries: the bundle format is
+    #   \n\n---\n\n# N filename.pdf\n...content...
+    pdf_blocks = re.split(r'\n---\n\n#\s+', merged)
+    if len(pdf_blocks) <= 1:
+        # Try alternate split: look for "## 第 X 页" style headings
+        pdf_blocks = [merged]
+
+    counter = [1]
+    nodes = []
+
+    for block in pdf_blocks:
+        block = block.strip()
+        if not block:
+            continue
+
+        # Extract chapter/filename from first line
+        lines = block.split('\n', 1)
+        header = lines[0].strip()
+        body = lines[1] if len(lines) > 1 else ''
+
+        # Derive chapter label from filename
+        ch_label = header
+        # Clean up common filename patterns
+        ch_label = re.sub(r'\.pdf$', '', ch_label)
+        ch_label = re.sub(r'^\d+\s*', '', ch_label)
+
+        if len(ch_label) < 2 or len(ch_label) > 80:
+            ch_label = "章节 " + str(len(nodes) + 1)
+
+        # Find potential knowledge points from slide titles
+        slide_titles = re.findall(r'## 第 \d+ 页\n(.+?)(?:\n|$)', body)
+        seen_titles = set()
+        children = []
+
+        for st in slide_titles:
+            st = st.strip()
+            if len(st) < 3 or st in seen_titles:
+                continue
+            # Skip pure page-number / meta lines
+            if re.match(r'^[\d\s/]+$', st):
+                continue
+            seen_titles.add(st)
+            children.append({
+                "id": f"n{counter[0]}",
+                "label": st[:60],
+                "summary": st,
+                "children": [],
+            })
+            counter[0] += 1
+
+        # Ensure at least one child per chapter
+        if not children:
+            children.append({
+                "id": f"n{counter[0]}",
+                "label": "本章内容",
+                "summary": "请阅读 PPT 原文了解详情",
+                "children": [],
+            })
+            counter[0] += 1
+
+        nodes.append({
+            "id": f"n{counter[0]}",
+            "label": ch_label[:40],
+            "summary": f"{len(children)} 个知识点",
+            "children": children,
+        })
+        counter[0] += 1
+
+    if not nodes:
+        nodes.append({
+            "id": "n1",
+            "label": "课程内容",
+            "summary": "提取文件未包含可识别的章节结构",
+            "children": [{"id": "n2", "label": "请检查课程资料格式", "summary": "", "children": []}],
+        })
+
+    tree = {"title": title, "nodes": nodes}
     validate_tree_json(tree)
     return tree
