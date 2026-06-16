@@ -122,11 +122,12 @@ def _build_slide_rail(slides):
 
 _SLIDE_CSS = """
 /* ── Notion-style slide cross-reference layout ── */
-/* Override base.css body max-width (860px) so the two columns get real room. */
-body { max-width: min(1840px, 95vw); }
-.kn-layout { display: flex; gap: 36px; align-items: flex-start; width: 100%; margin: 0 auto; }
-.kn-main { flex: 1 1 58%; min-width: 0; }
-.kn-rail { flex: 0 0 42%; max-width: 720px; position: sticky; top: 12px; align-self: flex-start;
+/* Override base.css body max-width (860px); fill the viewport edge-to-edge,
+   capped only on ultra-wide screens for readability. */
+body { max-width: 2400px; width: 96vw; padding-left: 2vw; padding-right: 2vw; }
+.kn-layout { display: flex; gap: 40px; align-items: flex-start; width: 100%; margin: 0 auto; }
+.kn-main { flex: 1 1 56%; min-width: 0; }
+.kn-rail { flex: 1 1 44%; max-width: 920px; position: sticky; top: 12px; align-self: flex-start;
   max-height: calc(100vh - 30px); overflow-y: auto; padding-right: 4px; }
 .kn-rail-title { font-weight: 700; color: var(--ink-light); font-size: 0.9em; margin-bottom: 10px;
   padding-bottom: 6px; border-bottom: 1px solid var(--divider); }
@@ -151,8 +152,17 @@ body { max-width: min(1840px, 95vw); }
 #epa-lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.82); display: none;
   align-items: center; justify-content: center; z-index: 9999; cursor: zoom-out; }
 #epa-lightbox img { max-width: 94vw; max-height: 94vh; border-radius: 6px; }
+/* Tablet / narrow desktop: keep two columns but rebalance + tighten margins */
+@media (max-width: 1280px) {
+  body { width: 98vw; padding-left: 1vw; padding-right: 1vw; }
+  .kn-layout { gap: 24px; }
+  .kn-main { flex: 1 1 54%; }
+  .kn-rail { flex: 1 1 46%; }
+}
+/* Mobile: stack the rail below the notes */
 @media (max-width: 900px) {
-  .kn-layout { flex-direction: column; }
+  body { width: 100%; padding-left: 12px; padding-right: 12px; }
+  .kn-layout { flex-direction: column; gap: 16px; }
   .kn-rail { position: static; flex: none; max-width: 100%; width: 100%; max-height: none; }
 }
 """
