@@ -118,6 +118,15 @@ div.toc li { margin: 3px 0; font-size: 0.95em; }
   content: '🧠 自测：';
   font-weight: 700; color: #1e40af;
 }
+.checkpoint .cp-answer { margin-top: 10px; border-top: 1px dashed #bfdbfe; padding-top: 8px; }
+.checkpoint .cp-answer summary {
+  cursor: pointer; color: #1e40af; font-weight: 600; user-select: none;
+  list-style: none;
+}
+.checkpoint .cp-answer summary::before { content: '💡 '; }
+.checkpoint .cp-answer summary::-webkit-details-marker { display: none; }
+.checkpoint .cp-answer[open] summary { margin-bottom: 6px; }
+.checkpoint .cp-answer ol, .checkpoint .cp-answer p { font-weight: 400; color: var(--ink); }
 
 /* ── TL;DR summary ── */
 .tldr {
