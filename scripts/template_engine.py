@@ -122,9 +122,11 @@ def _build_slide_rail(slides):
 
 _SLIDE_CSS = """
 /* ── Notion-style slide cross-reference layout ── */
-.kn-layout { display: flex; gap: 28px; align-items: flex-start; max-width: 1480px; margin: 0 auto; }
-.kn-main { flex: 1 1 60%; min-width: 0; }
-.kn-rail { flex: 0 0 38%; max-width: 560px; position: sticky; top: 12px; align-self: flex-start;
+/* Override base.css body max-width (860px) so the two columns get real room. */
+body { max-width: min(1840px, 95vw); }
+.kn-layout { display: flex; gap: 36px; align-items: flex-start; width: 100%; margin: 0 auto; }
+.kn-main { flex: 1 1 58%; min-width: 0; }
+.kn-rail { flex: 0 0 42%; max-width: 720px; position: sticky; top: 12px; align-self: flex-start;
   max-height: calc(100vh - 30px); overflow-y: auto; padding-right: 4px; }
 .kn-rail-title { font-weight: 700; color: var(--ink-light); font-size: 0.9em; margin-bottom: 10px;
   padding-bottom: 6px; border-bottom: 1px solid var(--divider); }
@@ -174,24 +176,103 @@ document.addEventListener('click', function(e){
 
 
 def _inject_heading_chips(body_html):
-    """Turn heading-trailing <span data-slides="12,13"> markers into [页N] chips.
+    """Turn heading-trailing <span data-slides="anchor1,anchor2"> markers into
+    clickable [页N] chips that scroll the right rail to the matching slide.
 
     Notes agents may tag headings with data-slides; if absent this is a no-op.
+    The chip label shows the trailing page number; data-page carries the full
+    anchor id so the click handler can find the slide card.
     """
     def repl(m):
-        pages = m.group(1)
+        anchors = m.group(1)
         chips = ''
-        for p in pages.split(','):
-            p = p.strip()
-            if p:
-                chips += '<span class="pg-chip" data-page="' + p + '">页' + p + '</span>'
+        for a in anchors.split(','):
+            a = a.strip()
+            if not a:
+                continue
+            tail = _re.search(r'(\d+)\s*$', a)
+            label = tail.group(1) if tail else a
+            chips += ('<span class="pg-chip" data-page="' + a + '">页' + label + '</span>')
         return chips
     return _re.sub(r'<span\s+data-slides="([^"]*)"\s*></span>', repl, body_html)
 
 
-def save_knowledge_html(body_html, output_path, title, slides=None):
+def _norm_label(s):
+    """Normalize a heading/KC label for fuzzy matching: strip tags, tag-words, spaces."""
+    s = _re.sub(r'<[^>]+>', '', s)
+    s = _re.sub(r'(必考|重点|高频|了解)', '', s)
+    s = _re.sub(r'\s+', '', s)
+    return s.strip()
+
+
+def _auto_tag_headings(body_html, kcs, slides):
+    """Auto-inject <span data-slides> into H2/H3 headings by matching their text
+    to knowledge-component labels, mapping each KC's source_refs pages to the
+    rendered slide anchors. Lets existing notes (no manual tags) get page chips.
+    """
+    if not kcs or not slides:
+        return body_html
+
+    # (pdf_basename, raw_page) -> anchor id
+    anchor_of = {}
+    for s in slides:
+        anchor_of[(s.get('pdf', ''), int(s.get('raw_page', -1)))] = s.get('page')
+
+    # Precompute each KC's available anchors (only pages that were actually rendered)
+    from slide_renderer import parse_refs_by_pdf
+    kc_anchors = []
+    for kc in kcs:
+        label = _norm_label(kc.get('label', ''))
+        if not label:
+            continue
+        anchors = []
+        by_pdf = parse_refs_by_pdf(kc.get('source_refs'))
+        for pdf_name, pages in by_pdf.items():
+            for pg in sorted(pages):
+                # try exact pdf match, then any pdf (single-PDF chapters use '')
+                anc = anchor_of.get((pdf_name, pg))
+                if anc is None:
+                    for (p2, pg2), a2 in anchor_of.items():
+                        if pg2 == pg and (pdf_name == '' or p2 == pdf_name):
+                            anc = a2
+                            break
+                if anc is not None and anc not in anchors:
+                    anchors.append(anc)
+        if anchors:
+            kc_anchors.append((label, anchors))
+
+    if not kc_anchors:
+        return body_html
+
+    def repl(m):
+        level, attrs, inner = m.group(1), m.group(2), m.group(3)
+        head_norm = _norm_label(inner)
+        if not head_norm:
+            return m.group(0)
+        # find best KC whose label overlaps this heading
+        best = None
+        for label, anchors in kc_anchors:
+            if label in head_norm or head_norm in label:
+                if best is None or len(label) > len(best[0]):
+                    best = (label, anchors)
+        if not best:
+            return m.group(0)
+        marker = '<span data-slides="' + ','.join(best[1]) + '"></span>'
+        return '<h' + level + attrs + '>' + inner + marker + '</h' + level + '>'
+
+    return _re.sub(r'<h([23])([^>]*)>(.*?)</h\1>', repl, body_html, flags=_re.DOTALL)
+
+
+def save_knowledge_html(body_html, output_path, title, slides=None, kcs=None):
     """Render the knowledge list. If `slides` is provided, add a Notion-style
-    right-side slide rail (rendered PPT pages + collapsible original text)."""
+    right-side slide rail (rendered PPT pages + collapsible original text).
+
+    If `kcs` (the chapter's knowledge components) is also given, headings are
+    auto-tagged with page chips that scroll the rail to the matching slide —
+    so existing notes get the click-to-locate links without re-running agents.
+    """
+    if slides and kcs:
+        body_html = _auto_tag_headings(body_html, kcs, slides)
     body_html = _inject_heading_chips(body_html)
     body_html = _auto_toc_and_title(body_html, title)
 

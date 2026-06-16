@@ -120,3 +120,37 @@ class TestSlideRailRendering:
         assert 'class="pg-chip"' in html
         assert 'data-page="12"' in html
         assert 'data-page="13"' in html
+
+    def test_auto_tag_headings_from_kcs(self, temp_dir):
+        """Headings auto-get page chips by matching KC labels — no manual tags."""
+        out = os.path.join(temp_dir, "auto.html")
+        body = '<h3>归并排序 <span class="tag-must">必考</span></h3><p>正文</p>'
+        slides = [
+            {"page": "26", "pdf": "3 分治-1.pdf", "raw_page": 26,
+             "label": "第26页", "img": "x", "text": "归并排序原文"},
+        ]
+        kcs = [
+            {"id": "kc3.3", "label": "归并排序", "importance": "must",
+             "source_refs": ["3 分治-1.pdf/26"]},
+        ]
+        save_knowledge_html(body, out, "分治", slides=slides, kcs=kcs)
+        with open(out, encoding="utf-8") as f:
+            html = f.read()
+        # The 归并排序 heading should get a chip pointing at page 26
+        assert 'class="pg-chip"' in html
+        assert 'data-page="26"' in html
+
+    def test_auto_tag_skips_unmatched_heading(self, temp_dir):
+        """A heading with no matching KC gets no chip."""
+        out = os.path.join(temp_dir, "nomatch.html")
+        body = '<h3>完全不相关的标题</h3>'
+        slides = [{"page": "5", "pdf": "x.pdf", "raw_page": 5,
+                   "label": "第5页", "img": "x", "text": ""}]
+        kcs = [{"id": "k1", "label": "归并排序", "importance": "must",
+                "source_refs": ["x.pdf/5"]}]
+        save_knowledge_html(body, out, "测试", slides=slides, kcs=kcs)
+        with open(out, encoding="utf-8") as f:
+            html = f.read()
+        # Heading text present but no chip injected for it
+        assert "完全不相关的标题" in html
+        assert 'data-page="5"' not in html.split('kn-rail')[0]  # no chip in note area

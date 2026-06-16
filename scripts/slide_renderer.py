@@ -184,7 +184,9 @@ def build_chapter_slides(pdf_paths, out_dir, density='key', skeleton=None,
             # Globally-unique anchor id when multiple PDFs share page numbers
             anchor = f"{pdf_tag}-{page}" if multi else str(page)
             slides.append({
-                "page": anchor,
+                "page": anchor,          # anchor id used in the rail + chips
+                "pdf": base,             # source PDF basename (for KC→slide mapping)
+                "raw_page": page,        # 1-based page within that PDF
                 "label": f"{pdf_tag} · 第{page}页" if multi else f"第{page}页",
                 "img": _img_to_data_uri(r['img_path'], max_width, quality),
                 "text": texts.get(page, ''),
