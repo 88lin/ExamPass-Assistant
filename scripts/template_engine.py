@@ -109,10 +109,13 @@ def _build_slide_rail(slides):
                 '<details class="slide-text"><summary>原文文字</summary>'
                 '<div class="slide-text-body">' + safe + '</div></details>'
             )
+        iw = s.get('iw') or 0
+        ih = s.get('ih') or 0
+        dim_attr = (' width="' + str(iw) + '" height="' + str(ih) + '"') if (iw and ih) else ''
         cards.append(
             '<div class="slide-card" id="slide-p' + str(page) + '" data-page="' + str(page) + '">'
             '<div class="slide-card-label">' + label + '</div>'
-            '<img class="slide-img" src="' + img + '" alt="' + label + '" loading="lazy" '
+            '<img class="slide-img"' + dim_attr + ' src="' + img + '" alt="' + label + '" '
             'onclick="window.__epaLightbox&&window.__epaLightbox(this.src)">'
             + text_html +
             '</div>'
@@ -125,9 +128,8 @@ _SLIDE_CSS = """
 /* Override base.css body max-width (860px); fill the viewport edge-to-edge,
    capped only on ultra-wide screens for readability. */
 body { max-width: 2400px; width: 96vw; padding-left: 2vw; padding-right: 2vw; }
-.kn-layout { display: flex; gap: 40px; align-items: flex-start; width: 100%; margin: 0 auto;
-  overflow-x: hidden; }
-.kn-main { flex: 1 1 56%; min-width: 0; overflow-x: hidden; }
+.kn-layout { display: flex; gap: 40px; align-items: flex-start; width: 100%; margin: 0 auto; }
+.kn-main { flex: 1 1 56%; min-width: 0; overflow-x: clip; }
 .kn-main mjx-container[display="true"] { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
 .kn-rail { flex: 1 1 44%; max-width: 920px; position: sticky; top: 12px; align-self: flex-start;
   max-height: calc(100vh - 30px); overflow-y: auto; padding-right: 4px; }
@@ -136,8 +138,8 @@ body { max-width: 2400px; width: 96vw; padding-left: 2vw; padding-right: 2vw; }
 .slide-card { border: 1px solid var(--card-border); border-radius: var(--radius);
   background: var(--card-bg); padding: 8px; margin-bottom: 14px; }
 .slide-card-label { font-size: 0.78em; color: var(--ink-light); margin-bottom: 6px; }
-.slide-img { width: 100%; border-radius: 4px; cursor: zoom-in; display: block;
-  border: 1px solid var(--divider); }
+.slide-img { width: 100%; height: auto; border-radius: 4px; cursor: zoom-in; display: block;
+  border: 1px solid var(--divider); background: #fff; }
 .slide-text { margin-top: 6px; font-size: 0.85em; }
 .slide-text summary { cursor: pointer; color: var(--accent); user-select: none; }
 .slide-text-body { margin-top: 6px; color: var(--ink-light); line-height: 1.6;

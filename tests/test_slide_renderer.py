@@ -107,6 +107,18 @@ class TestSlideRailRendering:
         assert "slide-card" in html
         assert "__epaLightbox" in html
         assert "原始幻灯片文字" in html
+
+    def test_slide_img_reserves_space(self, temp_dir):
+        """Slide images carry width/height attrs (no collapsed short boxes)
+        and are not lazy-loaded (base64 is already inline)."""
+        out = os.path.join(temp_dir, "dims.html")
+        slides = [{"page": "1", "label": "第1页", "img": "data:image/jpeg;base64,AAAA",
+                   "iw": 900, "ih": 506, "text": ""}]
+        save_knowledge_html("<h2>X</h2>", out, "X", slides=slides)
+        with open(out, encoding="utf-8") as f:
+            html = f.read()
+        assert 'width="900"' in html and 'height="506"' in html
+        assert 'loading=' not in html  # lazy removed — base64 needs no lazy
         assert "@media (max-width: 900px)" in html
 
     def test_heading_chip_injection(self, temp_dir):

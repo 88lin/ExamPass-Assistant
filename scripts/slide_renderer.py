@@ -63,26 +63,29 @@ def extract_page_texts(pdf_path):
 
 
 def _img_to_data_uri(img_path, max_width=900, quality=72):
-    """Downscale + JPEG-compress an image, return a base64 data URI.
+    """Downscale + JPEG-compress an image, return (data_uri, width, height).
 
+    Returning the final dimensions lets the HTML reserve correct space for
+    each slide (no collapsed/short boxes before the image decodes).
     Keeps the HTML self-contained and portable while controlling size.
     """
     if Image is None:
-        # Fallback: embed raw bytes as PNG
+        # Fallback: embed raw bytes as PNG, unknown dimensions
         with open(img_path, 'rb') as f:
             raw = f.read()
         b64 = base64.b64encode(raw).decode('ascii')
-        return f"data:image/png;base64,{b64}"
+        return f"data:image/png;base64,{b64}", 0, 0
     img = Image.open(img_path)
     if img.mode in ('RGBA', 'P'):
         img = img.convert('RGB')
     if img.width > max_width:
         h = int(img.height * max_width / img.width)
         img = img.resize((max_width, h), Image.LANCZOS)
+    w, h = img.width, img.height
     buf = io.BytesIO()
     img.save(buf, 'JPEG', quality=quality)
     b64 = base64.b64encode(buf.getvalue()).decode('ascii')
-    return f"data:image/jpeg;base64,{b64}"
+    return f"data:image/jpeg;base64,{b64}", w, h
 
 
 def _pages_from_spec(spec):
@@ -183,12 +186,14 @@ def build_chapter_slides(pdf_paths, out_dir, density='key', skeleton=None,
             page = r['page']
             # Globally-unique anchor id when multiple PDFs share page numbers
             anchor = f"{pdf_tag}-{page}" if multi else str(page)
+            uri, iw, ih = _img_to_data_uri(r['img_path'], max_width, quality)
             slides.append({
                 "page": anchor,          # anchor id used in the rail + chips
                 "pdf": base,             # source PDF basename (for KC→slide mapping)
                 "raw_page": page,        # 1-based page within that PDF
                 "label": f"{pdf_tag} · 第{page}页" if multi else f"第{page}页",
-                "img": _img_to_data_uri(r['img_path'], max_width, quality),
+                "img": uri,
+                "iw": iw, "ih": ih,      # final image dimensions (reserve space)
                 "text": texts.get(page, ''),
             })
     return slides
