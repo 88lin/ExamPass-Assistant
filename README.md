@@ -43,12 +43,12 @@ pip install -r requirements.txt
 
 | Command | Description |
 |---------|-------------|
-| `/exampass <dir>` | **Multi-agent deep pipeline** — skeleton → parallel notes & questions → streaming review/solve/revise → render combined pages |
-| `/exampass fast <dir>` | **Single-agent fast mode** — skip sub-agent orchestration, produce the same outputs faster |
+| `/exampass <dir>` | **Default pipeline** — per chapter: notes (with the **PPT cross-reference rail on by default**) + interactive quiz, in one combined page |
 | `/exampass graph <dir>` | **Knowledge graph** — interactive left-right tree with dependency edges, hub stars, inline note cards, draggable split, search & zoom |
-| `/exampass final <dir>` | **Mock final exam** — interactive difficulty/duration/preferences, web-referenced blueprint (100 pts), two-pass solver verification, answer key |
-| `/exampass mock <dir> [--ref <past exam>]` | **Mock from a past paper** *(new)* — analyze a real exam's style/score distribution and generate fresh questions in the same shape; without `--ref`, infer the course's exam style |
+| `/exampass final <dir> [--ref <past exam>] [--chapter <ch>]` | **Exam generator** — smart question-type selection (analyzes the course, not a fixed template); `--ref` imitates a real past paper's style; `--chapter` does a single chapter |
 | `/exampass update` | Pull latest features, fixes, and dependencies from GitHub |
+
+> v2.0 streamlined the commands: `fast` is gone (the default is already fast), and `mock` folded into `final --ref`. The PPT cross-reference rail, previously an opt-in flag, is now **on by default**.
 
 ### Multi-Agent Pipeline (default)
 

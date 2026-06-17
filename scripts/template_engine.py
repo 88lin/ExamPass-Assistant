@@ -56,6 +56,22 @@ def _build_page(title, body_html, css_extra='', js_extra=''):
 
 import re as _re
 
+_TAG_LABELS = {'tag-must': '必考', 'tag-key': '重点', 'tag-freq': '高频', 'tag-info': '了解'}
+
+
+def _normalize_tag_labels(html):
+    """Fix tag chips whose text is the raw class name (a common note-agent slip:
+    <span class="tag-info">tag-info</span> instead of …>了解</span>)."""
+    if not html:
+        return html
+    def repl(m):
+        cls, text = m.group(1), m.group(2).strip()
+        if text in _TAG_LABELS or text == cls:
+            return f'<span class="{cls}">{_TAG_LABELS.get(cls, text)}</span>'
+        return m.group(0)
+    return _re.sub(r'<span class="(tag-(?:must|key|freq|info))">([^<]*)</span>', repl, html)
+
+
 def _strip_full_document(html):
     """If a note arrives as a *full* HTML document (some agents emit
     <!DOCTYPE><html><head><style>…</head><body>…</body></html>, sometimes with
@@ -332,6 +348,7 @@ def _knowledge_body(body_html, title, slides=None, kcs=None, add_h1=True):
     save_combined_html so the slide-rail layout is identical in both.
     """
     body_html = _strip_full_document(body_html)
+    body_html = _normalize_tag_labels(body_html)
     if slides and kcs:
         body_html = _auto_tag_headings(body_html, kcs, slides)
     body_html = _inject_heading_chips(body_html)
