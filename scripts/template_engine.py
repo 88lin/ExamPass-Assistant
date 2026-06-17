@@ -258,24 +258,63 @@ window.addEventListener('resize', function(){ clearTimeout(__epaFitT); __epaFitT
 </script>"""
 
 
-def _inject_heading_chips(body_html):
-    """Turn heading-trailing <span data-slides="anchor1,anchor2"> markers into
-    clickable [页N] chips that scroll the right rail to the matching slide.
+def _normalize_math_delimiters(html):
+    """Convert \\(...\\) and \\[...\\] to $...$ and $$...$$ outside code/pre blocks.
 
-    Notes agents may tag headings with data-slides; if absent this is a no-op.
-    The chip label shows the trailing page number; data-page carries the full
-    anchor id so the click handler can find the slide card.
+    MathJax may misparse \\([...)\\) when [ immediately follows \\( because some
+    TeX parsers treat [ as an optional-argument opener. Dollar delimiters are
+    unambiguous and more portable. Leaves <pre>/<code> blocks untouched.
     """
+    if not html:
+        return html
+    result = []
+    last = 0
+    for blk in _re.finditer(r'<(?:pre|code)[^>]*>.*?</(?:pre|code)>', html, _re.DOTALL | _re.IGNORECASE):
+        chunk = html[last:blk.start()]
+        chunk = _re.sub(r'\\\[(.+?)\\\]', r'$$\1$$', chunk, flags=_re.DOTALL)
+        chunk = _re.sub(r'\\\((.+?)\\\)', r'$\1$', chunk, flags=_re.DOTALL)
+        result.append(chunk)
+        result.append(blk.group(0))
+        last = blk.end()
+    chunk = html[last:]
+    chunk = _re.sub(r'\\\[(.+?)\\\]', r'$$\1$$', chunk, flags=_re.DOTALL)
+    chunk = _re.sub(r'\\\((.+?)\\\)', r'$\1$', chunk, flags=_re.DOTALL)
+    result.append(chunk)
+    return ''.join(result)
+
+
+def _inject_heading_chips(body_html, slides=None):
+    """Turn heading-trailing <span data-slides="..."> markers into clickable [页N] chips.
+
+    When slides is provided, resolves page numbers to actual slide card anchor IDs
+    (which for multi-PDF chapters look like "3 分治-1-19", not just "19"), fixing
+    the format mismatch between manually-written notes and the slide renderer output.
+    """
+    page_to_anchor = {}
+    if slides:
+        for s in slides:
+            raw = s.get('raw_page')
+            if raw is not None:
+                page_to_anchor[int(raw)] = s.get('page', '')
+
     def repl(m):
-        anchors = m.group(1)
+        anchors_str = m.group(1)
         chips = ''
-        for a in anchors.split(','):
+        for a in anchors_str.split(','):
             a = a.strip()
             if not a:
                 continue
-            tail = _re.search(r'(\d+)\s*$', a)
-            label = tail.group(1) if tail else a
-            chips += ('<span class="pg-chip" data-page="' + a + '">页' + label + '</span>')
+            # "3-1:19-21" → first page after : or / is the display page
+            colon_m = _re.search(r'[:/](\d+)', a)
+            if colon_m:
+                pg_num = int(colon_m.group(1))
+                label = colon_m.group(1)
+            else:
+                tail = _re.search(r'(\d+)', a)
+                label = tail.group(1) if tail else a
+                pg_num = int(label) if tail else None
+            anchor = page_to_anchor.get(pg_num, a) if (page_to_anchor and pg_num is not None) else a
+            chips += ('<span class="pg-chip" data-page="' + anchor + '">页' + label + '</span>')
         return chips
     return _re.sub(r'<span\s+data-slides="([^"]*)"\s*></span>', repl, body_html)
 
@@ -356,9 +395,10 @@ def _knowledge_body(body_html, title, slides=None, kcs=None, add_h1=True):
     """
     body_html = _strip_full_document(body_html)
     body_html = _normalize_tag_labels(body_html)
+    body_html = _normalize_math_delimiters(body_html)
     if slides and kcs:
         body_html = _auto_tag_headings(body_html, kcs, slides)
-    body_html = _inject_heading_chips(body_html)
+    body_html = _inject_heading_chips(body_html, slides)
     body_html = _auto_toc_and_title(body_html, title if add_h1 else '')
 
     css_extra = ''

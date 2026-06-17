@@ -116,7 +116,7 @@
 - 核心概念/定义/公式包 <span class="kp">…</span>，解释/动机/举例包 <span class="exp">…</span>
 - 每个 H3 结尾标四色标签：tag-must / tag-key / tag-freq / tag-info
 - 易错点用 <blockquote>易错：…</blockquote>
-- 公式用 $$…$$ 或 $…$；箭头写 --&gt;；引号用「」；不用 Unicode 特殊字符
+- 公式用 $$…$$ 或 $…$；**禁止** `\(...\)` / `\[...\]` 形式（MathJax 遇 `\([...]` 会把 `[...]` 当 optional arg 吃掉导致内容消失）；箭头写 --&gt;；引号用「」；不用 Unicode 特殊字符
 - 只写 H2/H3，不写 H1
 - **【幻灯片对照】每个 H2/H3 标题末尾追加该知识点对应的 PPT 页码标记**：`<span data-slides="12,13"></span>`（页码取自切片里该知识组件的 source_refs）。渲染时会自动变成标题旁的 [页N] 小链接，点击滚动到右侧对应幻灯片。没有对应页就省略这个标记。
 
